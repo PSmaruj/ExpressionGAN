@@ -1,34 +1,86 @@
 import tensorflow as tf
 import numpy as np
+from tensorflow.keras import layers, Model
 
 def leakyrelu(input, alpha=0.3):
   return tf.maximum(alpha * input, input)
 
-def mlp_generator(inputs, dim, input_size, output_size, num_layers=4):
-  inputs = tf.reshape(inputs, [-1, input_size])
-  for layer in range(num_layers):
-    in_size = input_size if layer == 0 else dim
-    out_size = output_size if layer == num_layers - 1 else dim
-    W = tf.get_variable('Layer_{}/Weights'.format(layer),
-                        #validate_shape=False,
-                        initializer=tf.truncated_normal(shape=[in_size, out_size], stddev=tf.sqrt(2. / tf.cast(in_size, tf.float32))))
-    b = tf.get_variable('Layer_{}/Bias'.format(layer), initializer=tf.constant(0.0, shape=[out_size]))
-    inputs = tf.nn.relu(tf.add(tf.matmul(inputs, W), b))
-  outputs = inputs
-  return outputs
+def mlp_generator(input_shape, dim, output_size, num_layers=4):
+    # Use tf.keras.Input to create a Keras tensor
+    inputs = tf.keras.Input(shape=input_shape)
+    
+    x = inputs
+    for layer in range(num_layers):
+        in_size = input_shape[0] if layer == 0 else dim
+        out_size = output_size if layer == num_layers - 1 else dim
+        
+        # Create layers
+        x = layers.Dense(units=out_size, activation='relu',
+                         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=tf.sqrt(2. / in_size)))(x)
+    
+    outputs = x
+    model = Model(inputs, outputs)
+    return model
+
+
+# def mlp_generator(inputs, dim, input_size, output_size, num_layers=4):
+#     inputs = tf.reshape(inputs, [-1, input_size])
+    
+#     for layer in range(num_layers):
+#         in_size = input_size if layer == 0 else dim
+#         out_size = output_size if layer == num_layers - 1 else dim
+        
+#         # Weight initialization
+#         W = tf.Variable(tf.random.truncated_normal([in_size, out_size], stddev=tf.sqrt(2. / tf.cast(in_size, tf.float32))),
+#                         name='Layer_{}/Weights'.format(layer))
+        
+#         # Bias initialization
+#         b = tf.Variable(tf.zeros([out_size]), name='Layer_{}/Bias'.format(layer))
+        
+#         # Apply the layer: inputs * W + b, followed by ReLU activation
+#         inputs = tf.nn.relu(tf.add(tf.matmul(inputs, W), b))
+    
+#     outputs = inputs
+#     return outputs
 
 def mlp_discriminator(inputs, dim, input_size, num_layers=4):
-  for layer in range(num_layers):
-    in_size = input_size if layer == 0 else dim
-    out_size = 1 if layer == num_layers - 1 else dim
-    W = tf.get_variable('Layer_{}/Weights'.format(layer),
-                        #validate_shape=False,
-                        initializer=tf.truncated_normal(shape=[in_size, out_size],
-                                                        stddev=tf.sqrt(2. / tf.cast(in_size, tf.float32))))
-    b = tf.get_variable('Layer_{}/Bias'.format(layer), initializer=tf.constant(0.0, shape=[out_size]))
-    inputs = tf.nn.relu(tf.add(tf.matmul(inputs, W), b))
-  scores = inputs
-  return scores
+    inputs = tf.reshape(inputs, [-1, input_size])  # Ensure inputs are reshaped properly
+
+    for layer in range(num_layers):
+        in_size = input_size if layer == 0 else dim
+        out_size = 1 if layer == num_layers - 1 else dim
+        
+        # Weight initialization using tf.Variable
+        W = tf.Variable(tf.random.truncated_normal(shape=[in_size, out_size], 
+                                                   stddev=tf.sqrt(2. / tf.cast(in_size, tf.float32))),
+                        name='Layer_{}/Weights'.format(layer))
+        
+        # Bias initialization using tf.Variable
+        b = tf.Variable(tf.zeros([out_size]), name='Layer_{}/Bias'.format(layer))
+        
+        # Apply the layer: inputs * W + b, followed by ReLU activation
+        inputs = tf.nn.relu(tf.matmul(inputs, W) + b)
+    
+    scores = inputs  # Final scores after the last layer
+    return scores
+
+def mlp_discriminator(input_shape, dim, num_layers=4):
+    # Use tf.keras.Input to create a Keras tensor
+    inputs = tf.keras.Input(shape=input_shape)
+    
+    x = inputs
+    for layer in range(num_layers):
+        in_size = input_shape[0] if layer == 0 else dim
+        out_size = 1 if layer == num_layers - 1 else dim
+        
+        # Create a Dense layer
+        x = layers.Dense(units=out_size, activation='relu',
+                         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=tf.sqrt(2. / in_size)))(x)
+    
+    scores = x  # Final scores after the last layer
+    model = Model(inputs, scores)
+    return model
+
 
 def resblock(inputs, num_channels, name):
   input_size = tf.reduce_prod(tf.shape(inputs[1:]))

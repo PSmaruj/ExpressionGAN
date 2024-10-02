@@ -10,16 +10,32 @@ import matplotlib.pyplot as plt
 
 from .dna import get_vocab
 
+# def get_vars(scope):
+#   """Function to find tensorflow variables within a scope"""
+#   try:
+#     if type(scope) == str:
+#       s = scope
+#     else:
+#       s = scope.name
+#     return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=s)
+#   except:
+#     raise TypeError("Unrecognized scope type")
+ 
 def get_vars(scope):
-  """Function to find tensorflow variables within a scope"""
-  try:
-    if type(scope) == str:
-      s = scope
-    else:
-      s = scope.name
-    return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=s)
-  except:
-    raise TypeError("Unrecognized scope type")
+    """Function to find TensorFlow variables within a scope in TensorFlow 2.x"""
+    try:
+        # If scope is a tf.compat.v1.variable_scope, extract the name
+        if isinstance(scope, tf.compat.v1.VariableScope):
+            scope_name = scope.name
+        elif isinstance(scope, str):
+            scope_name = scope
+        else:
+            raise TypeError("Unrecognized scope type")
+        
+        # Get all variables under this scope using tf.compat.v1 functions
+        return tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope=scope_name)
+    except Exception as e:
+        raise TypeError("Unrecognized scope type") from e
   
 def log(args, samples_dir=False):
   """Create logging directory structure according to args."""
